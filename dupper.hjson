@@ -30,6 +30,7 @@
         wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
         apt-get -y update
         apt-get -y install logstash
+        mkdir -p /var/log/logstash
       '''
     },    
     {
@@ -69,6 +70,7 @@
       '''
         apt-get install -y nginx apache2-utils
         htpasswd -b -c /etc/nginx/htpasswd.users admin kibana
+        mkdir -p /var/log/nginx
       '''
     }
   ],
@@ -97,6 +99,7 @@
         service kibana start
         service logstash start
         service nginx start
+        service filebeat start
 
         # Configure Kibana
         cd $HOME

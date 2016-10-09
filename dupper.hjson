@@ -19,7 +19,7 @@
         apt-get update -y
         echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections
         echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections
-        apt-get -y install oracle-java8-installer openssl unzip curl wget apt-transport-https gettext
+        apt-get -y install oracle-java8-installer openssl unzip curl wget apt-transport-https gettext vim
       '''
     },
     {
@@ -61,10 +61,11 @@
     start: [{
       server:
       '''
+        export SERVER_IP=$SERVER_IP
         # Copy Config files
         envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
         envsubst < $REPO_ROOT/filebeat.yml > /etc/filebeat/filebeat.yml
-        envsubst < $REPO_ROOT/nginx.config > /etc/nginx/sites-available/default 
+        eval "echo \"$(<$REPO_ROOT/nginx.config)\""  > /etc/nginx/sites-available/default  
         cp $REPO_ROOT/02-beats-input.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/10-syslog-filter.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/

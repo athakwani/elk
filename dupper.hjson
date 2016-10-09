@@ -79,12 +79,12 @@
       server:
       '''
         # Copy Config files
-        eval "$(cat $REPO_ROOT/openssl.cnf)" > /etc/ssl/openssl.cnf
-        eval "$(cat $REPO_ROOT/filebeat.yml)" > /etc/filebeat/filebeat.yml
-        eval "$(cat $REPO_ROOT/nginx.config)" > /etc/nginx/sites-available/default
+        eval "echo \"$(<$REPO_ROOT/openssl.cnf)\"" > /etc/ssl/openssl.cnf
+        eval "echo \"$(<$REPO_ROOT/filebeat.yml)\""  > /etc/filebeat/filebeat.yml
+        eval "echo \"$(<$REPO_ROOT/nginx.config)\""  > /etc/nginx/sites-available/default
         cp $REPO_ROOT/02-beats-input.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/10-syslog-filter.conf /etc/logstash/conf.d/
-        cp $REPO_ROOT/30-elasticseach-output.conf /etc/logstash/conf.d/
+        cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/
 
         # Generate Certificate
         mkdir -p /etc/pki/tls/certs
@@ -108,7 +108,21 @@
         cd beats-dashboards-*
         ./load.sh
         curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
-        curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
+
+         # Check for Server start
+         timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \
+         --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue localhost:9200 >/dev/null 2>&1; \
+         if [ $? = 0 ]; then break; fi; sleep 2s; done"
+
+         # Report status
+         _exit_code=$?   
+         if [[ $_exit_code -eq 0 ]]
+         then
+            curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
+         else
+             echo -e "Failed to configure Kibana"
+         fi
+
 
       '''
     },{

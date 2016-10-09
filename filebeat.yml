@@ -1,4 +1,3 @@
-echo "
 ################### Filebeat Configuration Example #########################
 
 ############################# Filebeat ######################################
@@ -251,7 +250,7 @@ output:
     # tls configuration. By default is off.
     tls:
       # List of root certificates for HTTPS server verifications
-      certificate_authorities: ["/etc/pki/tls/certs/logstash-forwarder.crt"]
+      certificate_authorities: [\"/etc/pki/tls/certs/logstash-forwarder.crt\"]
 
       # Certificate for TLS client authentication
       #certificate: "/etc/pki/client/cert.pem"
@@ -425,4 +424,3 @@ logging:
   # Sets log level. The default log level is error.
   # Available log levels are: critical, error, warning, info, debug
   #level: error
-"  

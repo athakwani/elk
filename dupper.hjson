@@ -87,7 +87,7 @@
         daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml
         
         # Start Kibana
-        daemon --name="kibana" --output=kibana.out -F /var/run/kibana.pid -D $REPO_ROOT -X /opt/kibana/bin/../node/bin/node --  /opt/kibana/bin/../src/cli
+        daemon -U --name="kibana" --output=kibana.out -F /var/run/kibana.pid -D $REPO_ROOT -X /opt/kibana/node/bin/node --  /opt/kibana/src/cli
         
          # Check for Server start
          timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \

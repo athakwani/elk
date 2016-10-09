@@ -75,13 +75,12 @@
         mkdir /etc/pki/tls/private      
         cd /etc/pki/tls
         openssl req -config /etc/ssl/openssl.cnf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
-        CERT="$(/etc/pki/tls/certs/logstash-forwarder.crt)"
+        CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
         _export CERT
         
         # Start services
         service elasticsearch start
         service logstash start
-        service kibana start
         service nginx start
         service filebeat start
 
@@ -106,7 +105,7 @@
              echo -e "Failed to configure Kibana"
          fi
 
-
+         service kibana start
       '''
     },{
       client:

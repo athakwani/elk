@@ -101,14 +101,6 @@
         service nginx start
         service filebeat start
 
-        # Configure Kibana
-        cd $HOME
-        curl -L -O https://download.elastic.co/beats/dashboards/beats-dashboards-1.1.0.zip
-        unzip beats-dashboards-*.zip
-        cd beats-dashboards-*
-        ./load.sh
-        curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
-
          # Check for Server start
          timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \
          --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue localhost:9200 >/dev/null 2>&1; \
@@ -118,6 +110,13 @@
          _exit_code=$?   
          if [[ $_exit_code -eq 0 ]]
          then
+        # Configure Kibana
+            cd $HOME
+            curl -L -O https://download.elastic.co/beats/dashboards/beats-dashboards-1.1.0.zip
+            unzip beats-dashboards-*.zip
+            cd beats-dashboards-*
+            ./load.sh
+            curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
             curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
          else
              echo -e "Failed to configure Kibana"

@@ -1,4 +1,3 @@
-echo "
 #
 # OpenSSL example configuration file.
 # This is mostly being used for generation of certificate requests.
@@ -223,7 +222,7 @@ basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 
 [ v3_ca ]
-subjectAltName = IP: $SERVER_IP
+subjectAltName = IP: ${SERVER_IP}
 
 # Extensions for a typical CA
 
@@ -349,4 +348,4 @@ tsa_name		= yes	# Must the TSA name be included in the reply?
 				# (optional, default: no)
 ess_cert_id_chain	= no	# Must the ESS cert id chain be included?
 				# (optional, default: no)
-"
+

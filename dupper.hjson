@@ -19,41 +19,24 @@
         apt-get update -y
         echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections
         echo debconf shared/accepted-oracle-license-v1-1 seen true | debconf-set-selections
-        apt-get -y install oracle-java8-installer openssl unzip curl wget apt-transport-https 
+        apt-get -y install oracle-java8-installer openssl unzip curl wget apt-transport-https gettext
       '''
     },
     {
-      name: "logstash",
+      name: "elk",
       cmd:
       '''
         echo 'deb http://packages.elastic.co/logstash/2.2/debian stable main' | tee /etc/apt/sources.list.d/logstash-2.2.x.list
+        echo "deb http://packages.elastic.co/elasticsearch/2.x/debian stable main" | tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
+        echo "deb http://packages.elastic.co/kibana/4.4/debian stable main" | tee -a /etc/apt/sources.list.d/kibana-4.4.x.list
         wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
         apt-get -y update
-        apt-get -y install logstash
+        apt-get -y install logstash elasticsearch kibana
         mkdir -p /var/log/logstash
-      '''
-    },    
-    {
-      name: "elasticsearch",
-      cmd:
-      '''
-        wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | apt-key add -      
-        echo "deb http://packages.elastic.co/elasticsearch/2.x/debian stable main" | tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
-        apt-get -y update 
-        apt-get -y install elasticsearch
+        sed -i.bak 's/.*server.host:.*/server.host: "localhost"/g' /opt/kibana/config/kibana.yml
         sed -i.bak 's/.*network.host:.*/network.host: localhost/g' /etc/elasticsearch/elasticsearch.yml
       '''
-    },
-    {
-      name: "kibana",
-      cmd:
-      '''
-        echo "deb http://packages.elastic.co/kibana/4.4/debian stable main" | tee -a /etc/apt/sources.list.d/kibana-4.4.x.list
-        apt-get -y update
-        apt-get -y install kibana
-        sed -i.bak 's/.*server.host:.*/server.host: "localhost"/g' /opt/kibana/config/kibana.yml
-      '''
-    },
+    },    
     {
       name: "filebeat",
       cmd:
@@ -79,9 +62,9 @@
       server:
       '''
         # Copy Config files
-        eval "echo \"$(<$REPO_ROOT/openssl.cnf)\"" > /etc/ssl/openssl.cnf
-        eval "echo \"$(<$REPO_ROOT/filebeat.yml)\""  > /etc/filebeat/filebeat.yml
-        eval "echo \"$(<$REPO_ROOT/nginx.config)\""  > /etc/nginx/sites-available/default
+        envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
+        envsubst < $REPO_ROOT/filebeat.yml > /etc/filebeat/filebeat.yml
+        envsubst < $REPO_ROOT/nginx.config > /etc/nginx/sites-available/default 
         cp $REPO_ROOT/02-beats-input.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/10-syslog-filter.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/
@@ -96,8 +79,8 @@
         
         # Start services
         service elasticsearch start
-        service kibana start
         service logstash start
+        service kibana start
         service nginx start
         service filebeat start
 
@@ -129,7 +112,7 @@
       '''
         mkdir -p $HOME/.elk
         echo "$CERT" > $HOME/.elk/logstash-forwarder.crt
-        open $SERVER_IP:
+        open http://$SERVER_IP:
       '''
     }],
     stop: [{

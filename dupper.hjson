@@ -1,0 +1,124 @@
+{
+  ports:
+  [
+    "80:80",
+    "5044:5044"
+  ],
+  volumes:
+  [
+    "/var/log:/var/log"
+  ],
+  dependencies: 
+  [
+    {
+      name: "linux-dependencies",
+      cmd:
+      '''
+        add-apt-repository -y ppa:webupd8team/java
+        apt-get update -y
+        apt-get -y install oracle-java8-installer openssl unzip curl wget apt-transport-https
+      '''
+    },
+    {
+      name: "logstash",
+      cmd:
+      '''
+        echo 'deb http://packages.elastic.co/logstash/2.2/debian stable main' | tee /etc/apt/sources.list.d/logstash-2.2.x.list
+        apt-get -y update
+        apt-get -y install logstash
+      '''
+    },    
+    {
+      name: "elasticsearch",
+      cmd:
+      '''
+        wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | apt-key add -      
+        echo "deb http://packages.elastic.co/elasticsearch/2.x/debian stable main" | tee -a /etc/apt/sources.list.d/elasticsearch-2.x.list
+        apt-get -y update 
+        apt-get -y install elasticsearch
+        sed -i.bak 's/.*network.host:.*/network.host: localhost/g' /etc/elasticsearch/elasticsearch.yml
+      '''
+    },
+    {
+      name: "kibana",
+      cmd:
+      '''
+        echo "deb http://packages.elastic.co/kibana/4.4/debian stable main" | tee -a /etc/apt/sources.list.d/kibana-4.4.x.list
+        wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | apt-key add -
+        apt-get -y update
+        apt-get -y install kibana
+        sed -i.bak 's/.*server.host:.*/server.host: "localhost"/g' /opt/kibana/config/kibana.yml
+      '''
+    },
+    {
+      name: "filebeat",
+      cmd:
+      '''
+        echo "deb https://packages.elastic.co/beats/apt stable main" | tee -a /etc/apt/sources.list.d/beats.list
+        wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | apt-key add -
+        apt-get -y update
+        apt-get -y install filebeat
+      '''
+    },
+    {
+      name: "nginx",
+      cmd:
+      '''
+        apt-get install -y nginx apache2-utils
+        htpasswd -c /etc/nginx/htpasswd.users kibanaadmin
+      '''
+    }
+  ],
+  commands: {
+    start: [{
+      server:
+      '''
+        mkdir -p /etc/pki/tls/certs
+        mkdir /etc/pki/tls/private      
+        cat /etc/ssl/openssl.cnf | sed  "s/\[ v3_ca \]/\[ v3_ca \]\nsubjectAltName = IP: $SERVER_IP/"
+        cd /etc/pki/tls
+        openssl req -config /etc/ssl/openssl.cnf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
+        CERT="$(/etc/pki/tls/certs/logstash-forwarder.crt)"
+        _export CERT
+        
+        cd $REPO_ROOT
+        cp 02-beats-input.conf /etc/logstash/conf.d/
+        cp 10-syslog-filter.conf /etc/logstash/conf.d/
+        cp 30-elasticseach-output.conf /etc/logstash/conf.d/
+
+        cd $HOME
+        curl -L -O https://download.elastic.co/beats/dashboards/beats-dashboards-1.1.0.zip
+        unzip beats-dashboards-*.zip
+        cd beats-dashboards-*
+        ./load.sh
+        curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
+        curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
+
+        eval "$(cat ../elk/filebeat.yml)" > /etc/filebeat/filebeat.yml
+
+        eval "$(cat nginx.config)" > /etc/nginx/sites-available/default
+        service elasticsearch start
+        service kibana start
+        service logstash start
+        service nginx start
+      '''
+    },{
+      client:
+      '''
+        mkdir -p $HOME/.elk
+        echo "$CERT" > $HOME/.elk/logstash-forwarder.crt
+        open $SERVER_IP:
+      '''
+    }],
+    stop: [{
+      server:
+      '''
+      '''
+    }],    
+    logs: [{
+      server:
+      '''
+      '''
+    }]
+  }
+}

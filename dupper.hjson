@@ -200,9 +200,9 @@
             exit 1
         fi
         
-        export _master
+        _export _master
         CERT="$(cat $HOME/.elk/logstash-forwarder.crt)"
-        _export CERT      
+        _export CERT
       '''
     },{    
       server:

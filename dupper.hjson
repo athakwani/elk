@@ -4,10 +4,6 @@
     "80:80",
     "5044:5044"
   ],
-  volumes:
-  [
-    "/var/log:/var/log"
-  ],
   dependencies: 
   [
     {
@@ -73,13 +69,10 @@
         echo -e "Configuring ELK ................. [    WORKING ]"
 
         # Copy Config files
-        envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
         envsubst < $REPO_ROOT/topbeat.yml > /etc/topbeat/topbeat.yml
         eval "echo \"$(<$REPO_ROOT/nginx.config)\""  > /etc/nginx/sites-available/default  
         cp $REPO_ROOT/02-beats-input.conf /etc/logstash/conf.d/
-        cp $REPO_ROOT/10-syslog-filter.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/
-        cp $REPO_ROOT/nginx.pattern /opt/logstash/patterns/nginx
 
         echo -e "Configuring ELK ................. [       DONE ]"
         echo -e "Generating Certificates ......... [    WORKING ]"
@@ -216,6 +209,7 @@
         echo -e "Starting Topbeat ................ [    WORKING ]"
         # Start Topbeat
         daemon --name="topbeat" --output=topbeat.out -F /var/run/topbeat.pid -D $REPO_ROOT -X /usr/bin/topbeat -- -c /etc/topbeat/topbeat.yml
+        cat topbeat.out
         echo -e "Starting Topbeat ................ [       DONE ]"
       '''
     }]

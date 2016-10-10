@@ -257,7 +257,7 @@
         fi
   
         CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
-        _export CERT      
+        _export CERT
         echo -e "Exporting Certificate"
       '''
     },{

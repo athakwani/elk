@@ -62,7 +62,7 @@
       server:
       '''
         export SERVER_IP=$SERVER_IP
-        sed -i "2i$SERVER_IP  elk" /etc/hosts
+        echo "$SERVER_IP     elk" >> /etc/hosts
 
         # Copy Config files
         envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
@@ -71,6 +71,7 @@
         cp $REPO_ROOT/02-beats-input.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/10-syslog-filter.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/
+        cp $REPO_ROOT/nginx.pattern /opt/logstash/patterns/nginx
 
         # Generate Certificate
         mkdir -p /etc/pki/tls/certs
@@ -85,7 +86,7 @@
         service nginx start
         
         # Start Filebeat
-        daemon --name="logstash" --output=logstash.out -F /var/run/logstash.pid -D $REPO_ROOT -X /opt/logstash/bin/logstash -- -f /etc/logstash/conf.d/ -l /var/log/logstash/logstash.log
+        daemon -U --name="logstash" --output=logstash.out -F /var/run/logstash.pid -D $REPO_ROOT -X /opt/logstash/bin/logstash -- -f /etc/logstash/conf.d/ -l /var/log/logstash/logstash.log
         
         # Start Filebeat
         daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml
@@ -93,16 +94,16 @@
         # Start Kibana
         daemon -U --name="kibana" --output=kibana.out -F /var/run/kibana.pid -D $REPO_ROOT -X /opt/kibana/node/bin/node --  /opt/kibana/src/cli
         
-         # Check for Server start
-         timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \
-         --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue localhost:9200 >/dev/null 2>&1; \
-         if [ $? = 0 ]; then break; fi; sleep 2s; done"
+        # Check for Server start
+        timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \
+        --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue localhost:9200 >/dev/null 2>&1; \
+        if [ $? = 0 ]; then break; fi; sleep 2s; done"
 
-         # Report status
-         _exit_code=$?   
-         if [[ $_exit_code -eq 0 ]]
-         then
-        # Configure Kibana
+        # Report status
+        _exit_code=$?   
+        if [[ $_exit_code -eq 0 ]]
+        then
+            # Configure Kibana
             cd $HOME
             curl -L -O https://download.elastic.co/beats/dashboards/beats-dashboards-1.1.0.zip
             unzip beats-dashboards-*.zip
@@ -110,9 +111,9 @@
             ./load.sh
             curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
             curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
-         else
-             echo -e "Failed to configure Kibana"
-         fi
+        else
+            echo -e "Failed to configure Kibana"
+        fi
 
       '''
     },{

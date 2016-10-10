@@ -62,6 +62,8 @@
       server:
       '''
         export SERVER_IP=$SERVER_IP
+        sed -i "2i$SERVER_IP  elk" /etc/hosts
+
         # Copy Config files
         envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
         envsubst < $REPO_ROOT/filebeat.yml > /etc/filebeat/filebeat.yml
@@ -72,16 +74,18 @@
 
         # Generate Certificate
         mkdir -p /etc/pki/tls/certs
-        mkdir /etc/pki/tls/private      
+        mkdir -p /etc/pki/tls/private      
         cd /etc/pki/tls
-        openssl req -config /etc/ssl/openssl.cnf -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
+        sudo openssl req -subj '/CN=elk/' -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
         CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
         _export CERT
         
         # Start services
         service elasticsearch start
-        service logstash start
         service nginx start
+        
+        # Start Filebeat
+        daemon --name="logstash" --output=logstash.out -F /var/run/logstash.pid -D $REPO_ROOT -X /opt/logstash/bin/logstash -- -f /etc/logstash/conf.d/ -l /var/log/logstash/logstash.log
         
         # Start Filebeat
         daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml

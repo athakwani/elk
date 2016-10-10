@@ -12,8 +12,7 @@ filebeat:
       # For each file found under this path, a harvester is started.
       # Make sure not file is defined twice as this can lead to unexpected behaviour.
       paths:
-        - /var/log/syslog
-        - /var/log/auth.log
+        - /var/log/nginx/access.log
         #- /var/log/*.log
         #- c:\programdata\elasticsearch\logs\*
 
@@ -71,7 +70,7 @@ filebeat:
       # Type to be published in the 'type' field. For Elasticsearch output,
       # the type defines the document type these entries should be stored
       # in. Default: log
-      document_type: syslog
+      document_type: nginx-access
 
       # Scan frequency in seconds.
       # How often these files should be checked for changes. In case it is set
@@ -182,13 +181,13 @@ filebeat:
 output:
 
   ### Elasticsearch as output
-  elasticsearch:
+  #elasticsearch:
     # Array of hosts to connect to.
     # Scheme and port can be left out and will be set to the default (http and 9200)
     # In case you specify and additional path, the scheme is required: http://localhost:9200/path
     # IPv6 addresses should always be defined as: https://[2001:db8::1]:9200
-    hosts: ["$SERVER_IP:5044"]
-    bulk_max_size: 1024
+    #hosts: ["localhost:5044"]
+    #bulk_max_size: 1024
 
     # Optional protocol and basic auth credentials.
     #protocol: "https"
@@ -248,9 +247,9 @@ output:
     #topology_expire: 15
 
     # tls configuration. By default is off.
-    tls:
+    #tls:
       # List of root certificates for HTTPS server verifications
-      certificate_authorities: ["/etc/pki/tls/certs/logstash-forwarder.crt"]
+      #certificate_authorities: ["/etc/pki/tls/certs/logstash-forwarder.crt"]
 
       # Certificate for TLS client authentication
       #certificate: "/etc/pki/client/cert.pem"
@@ -278,9 +277,9 @@ output:
 
 
   ### Logstash as output
-  #logstash:
+  logstash:
     # The Logstash hosts
-    #hosts: ["localhost:5044"]
+    hosts: ["elk:5044"]
 
     # Number of workers per Logstash host.
     #worker: 1
@@ -301,9 +300,9 @@ output:
     #index: filebeat
 
     # Optional TLS. By default is off.
-    #tls:
+    tls:
       # List of root certificates for HTTPS server verifications
-      #certificate_authorities: ["/etc/pki/root/ca.pem"]
+      certificate_authorities: ["/etc/pki/tls/certs/logstash-forwarder.crt"]
 
       # Certificate for TLS client authentication
       #certificate: "/etc/pki/client/cert.pem"
@@ -392,6 +391,18 @@ shipper:
 # Under Windos systems, the log files are per default sent to the file output,
 # under all other system per default to syslog.
 logging:
+  level: warning
+
+  # enable file rotation with default configuration
+  to_files: true
+
+  # do not log to syslog
+  to_syslog: false
+
+  files:
+    path: /var/log/mybeat
+    name: mybeat.log
+    keepfiles: 7
 
   # Send all logging output to syslog. On Windows default is false, otherwise
   # default is true.
@@ -402,7 +413,7 @@ logging:
   #to_files: false
 
   # To enable logging to files, to_files option has to be set to true
-  files:
+  #files:
     # The directory where the log files will written to.
     #path: /var/log/mybeat
 

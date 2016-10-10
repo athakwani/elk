@@ -170,7 +170,6 @@
     stop: [{
       server:
       '''
-        
         echo -e "Stopping Elastic Search ......... [    WORKING ]"
         # Stop Elasticsearch        
         service elasticsearch stop

@@ -7,6 +7,7 @@ services:
 - docker
 
 before_install:
+- curl -sSL https://get.dupper.co | sudo sh
 - mkdir -p $HOME/.docker
 - openssl aes-256-cbc -K $encrypted_e798a517f5ca_key -iv $encrypted_e798a517f5ca_iv -in $TRAVIS_BUILD_DIR/config.json.enc -out $HOME/.docker/config.json -d
 - git clone https://github.com/sstephenson/bats.git

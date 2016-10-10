@@ -3,23 +3,10 @@
 # Proprietary and confidential
 # Written by Ashish Thakwani <athakwani@gmail.com>, October 2016
 
-load common
 
 setup()
 {
-  if [[ $(uname -s) == "Darwin" ]]; then
-    _master="$(ifconfig en0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p')"
-  elif [[ $(uname -s) == "Darwin" ]]; then
-    _master="$(ifconfig eth0 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p')"
-  fi
-
-  __host="$DOCKER_HOST"
-  if [[ "${__host}" != "" ]]
-  then
-    _extract_ip _master ${__host}
-  fi
-
-  dupper exec -t elk join $_master
+  dupper exec -t elk join 127.0.0.1
 }
 
 @test "join" {

@@ -6,6 +6,7 @@
 
 setup()
 {
+  dupper exec -t elk get-cert
   dupper exec -t elk join 127.0.0.1
 }
 

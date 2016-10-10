@@ -246,6 +246,16 @@
     get-cert: [{
       server:
       '''
+        if [[ ! -f /etc/pki/tls/certs/logstash-forwarder.crt ]]; then
+            echo -e "Generating Certificates ......... [    WORKING ]"
+            # Generate Certificate
+            mkdir -p /etc/pki/tls/certs
+            mkdir -p /etc/pki/tls/private      
+            cd /etc/pki/tls
+            sudo openssl req -subj '/CN=elk/' -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
+            echo -e "Generating Certificates ......... [       DONE ]"
+        fi
+  
         CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
         _export CERT      
         echo -e "Exporting Certificate"

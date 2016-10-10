@@ -317,19 +317,22 @@
     unjoin: [{
       server:
       '''
+        _exit_code=0
         echo -e "Stopping Topbeat ................ [    WORKING ]"
-        # Get group ID of Logstash daemon process
-        pgid=$(ps --no-headers -o pgid $(cat /var/run/topbeat.pid))
-        pgid=$(echo $pgid | tr -d '[[:space:]]')
+        if [[ -e /var/run/topbeat.pid ]]; then
+            # Get group ID of Logstash daemon process
+            pgid=$(ps --no-headers -o pgid $(cat /var/run/topbeat.pid))
+            pgid=$(echo $pgid | tr -d '[[:space:]]')
 
-        # Kill all group processes
-        pkill -9 -g $pgid
+            # Kill all group processes
+            pkill -9 -g $pgid
 
 
-        # Check for termination and report status
-        timeout 5 bash -c -- "while true; do [ -f /var/run/topbeat.pid ]; \
-        if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
-        _exit_code=$?
+            # Check for termination and report status
+            timeout 5 bash -c -- "while true; do [ -f /var/run/topbeat.pid ]; \
+            if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
+            _exit_code=$?
+        fi
 
         if [[ $_exit_code -eq 0 ]]
         then

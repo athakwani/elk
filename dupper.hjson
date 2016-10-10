@@ -58,11 +58,13 @@
     }
   ],
   commands: {
-    start: [{
+    setup-master: [{
       server:
       '''
         export SERVER_IP=$SERVER_IP
         echo "$SERVER_IP     elk" >> /etc/hosts
+
+        echo -e "Configuring ELK ................. [    WORKING ]"
 
         # Copy Config files
         envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
@@ -73,6 +75,9 @@
         cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/nginx.pattern /opt/logstash/patterns/nginx
 
+        echo -e "Configuring ELK ................. [       DONE ]"
+        echo -e "Generating Certificates ......... [    WORKING ]"
+
         # Generate Certificate
         mkdir -p /etc/pki/tls/certs
         mkdir -p /etc/pki/tls/private      
@@ -80,20 +85,33 @@
         sudo openssl req -subj '/CN=elk/' -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
         CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
         _export CERT
+        echo -e "Generating Certificates ......... [       DONE ]"
         
+        echo -e "Starting Elastic Search ......... [    WORKING ]"
         # Start services
         service elasticsearch start
+        echo -e "Starting Elastic Search ......... [       DONE ]"
+
+        echo -e "Starting Nginx .................. [    WORKING ]"
         service nginx start
+        echo -e "Starting Nginx .................. [       DONE ]"
         
+        echo -e "Starting Logstash ............... [    WORKING ]"
         # Start Filebeat
         daemon -U --name="logstash" --output=logstash.out -F /var/run/logstash.pid -D $REPO_ROOT -X /opt/logstash/bin/logstash -- -f /etc/logstash/conf.d/ -l /var/log/logstash/logstash.log
+        echo -e "Starting Logstash ............... [       DONE ]"
         
+        echo -e "Starting Filebeat ............... [    WORKING ]"
         # Start Filebeat
         daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml
+        echo -e "Starting Filebeat ............... [       DONE ]"
         
+        echo -e "Starting Kibana ................. [    WORKING ]"
         # Start Kibana
         daemon -U --name="kibana" --output=kibana.out -F /var/run/kibana.pid -D $REPO_ROOT -X /opt/kibana/node/bin/node --  /opt/kibana/src/cli
+        echo -e "Starting Kibana ................. [       DONE ]"
         
+        echo -e "Cheking all services are up ..... [    WORKING ]"
         # Check for Server start
         timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \
         --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue localhost:9200 >/dev/null 2>&1; \
@@ -101,8 +119,11 @@
 
         # Report status
         _exit_code=$?   
+        _export _exit_code
         if [[ $_exit_code -eq 0 ]]
         then
+            echo -e "Cheking all services are up ..... [       DONE ]"
+            echo -e "Configuring Kibana dashboard .... [    WORKING ]"
             # Configure Kibana
             cd $HOME
             curl -L -O https://download.elastic.co/beats/dashboards/beats-dashboards-1.1.0.zip
@@ -111,8 +132,9 @@
             ./load.sh
             curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
             curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
+            echo -e "Configuring Kibana dashboard .... [      DONE ]"
         else
-            echo -e "Failed to configure Kibana"
+            echo -e "Cheking all services are up ..... [    FAILED ]"
         fi
 
       '''
@@ -121,17 +143,74 @@
       '''
         mkdir -p $HOME/.elk
         echo "$CERT" > $HOME/.elk/logstash-forwarder.crt
-        open http://$SERVER_IP:
+        # Open browser on Mac if server started successfully.
+        if [[ $_exit_code -eq 0 ]]
+        then
+         os="$(uname -s)"
+         if [[ $os == "Darwin" ]]; then
+             echo -e "Opening Browser"
+             open http://$SERVER_IP:
+         fi        
+        fi
+    
       '''
     }],
-    stop: [{
+    get-cert: [{
       server:
       '''
+        CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
+        _export CERT      
+        echo -e "Exporting Certificate"
+      '''
+    },{
+      client:
+      '''
+        mkdir -p $HOME/.elk
+        echo "$CERT" > $HOME/.elk/logstash-forwarder.crt    
+        echo -e "Certificate saved in $HOME/.elk/logstash-forwarder.crt"
       '''
     }],    
-    logs: [{
+    join: [{
+      client:
+      '''
+        _master=""
+
+        while [ "$#" -gt 0 ]
+        do
+        opt="$1"
+        shift
+        case "$opt" in
+          *)
+            if [[ -z $_master ]]
+            then
+              _master="$opt"
+            fi
+            ;;
+        esac
+        done          
+
+        if [[ $_master == "" ]]; then
+            echo -e "Usage:\ndupper exec -t $REPO_NAME join <master ip>"
+            exit 1
+        fi
+        
+        export _master
+        CERT="$(cat $HOME/.elk/logstash-forwarder.crt)"
+        _export CERT      
+      '''
+    },{    
       server:
       '''
+        echo "$_master     elk" >> /etc/hosts
+        mkdir -p /etc/pki/tls/certs/
+        echo "$CERT" > /etc/pki/tls/certs/logstash-forwarder.crt
+        
+        # Configure filebeat
+        envsubst < $REPO_ROOT/filebeat.yml > /etc/filebeat/filebeat.yml
+        echo -e "Starting Filebeat ............... [    WORKING ]"
+        # Start Filebeat
+        daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml
+        echo -e "Starting Filebeat ............... [       DONE ]"
       '''
     }]
   }

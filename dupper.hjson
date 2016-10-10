@@ -38,13 +38,12 @@
       '''
     },    
     {
-      name: "filebeat",
+      name: "topbeat",
       cmd:
       '''
         echo "deb https://packages.elastic.co/beats/apt stable main" | tee -a /etc/apt/sources.list.d/beats.list
-        wget -qO - https://packages.elastic.co/GPG-KEY-elasticsearch | apt-key add -
         apt-get -y update
-        apt-get -y install filebeat
+        apt-get -y install topbeat
       '''
     },
     {
@@ -61,6 +60,13 @@
     setup-master: [{
       server:
       '''
+        local _mem=$(free -m | grep Mem | awk '{print $2}')
+        
+        if [[ _mem -lt 2000 ]]; then
+            echo -e "ELK stack requires >= 2G memory, quitting... "
+            exit 1
+        fi
+        
         export SERVER_IP=$SERVER_IP
         echo "$SERVER_IP     elk" >> /etc/hosts
 
@@ -68,7 +74,7 @@
 
         # Copy Config files
         envsubst < $REPO_ROOT/openssl.cnf > /etc/ssl/openssl.cnf 
-        envsubst < $REPO_ROOT/filebeat.yml > /etc/filebeat/filebeat.yml
+        envsubst < $REPO_ROOT/topbeat.yml > /etc/topbeat/topbeat.yml
         eval "echo \"$(<$REPO_ROOT/nginx.config)\""  > /etc/nginx/sites-available/default  
         cp $REPO_ROOT/02-beats-input.conf /etc/logstash/conf.d/
         cp $REPO_ROOT/10-syslog-filter.conf /etc/logstash/conf.d/
@@ -97,14 +103,14 @@
         echo -e "Starting Nginx .................. [       DONE ]"
         
         echo -e "Starting Logstash ............... [    WORKING ]"
-        # Start Filebeat
+        # Start Logstash
         daemon -U --name="logstash" --output=logstash.out -F /var/run/logstash.pid -D $REPO_ROOT -X /opt/logstash/bin/logstash -- -f /etc/logstash/conf.d/ -l /var/log/logstash/logstash.log
         echo -e "Starting Logstash ............... [       DONE ]"
         
-        echo -e "Starting Filebeat ............... [    WORKING ]"
-        # Start Filebeat
-        daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml
-        echo -e "Starting Filebeat ............... [       DONE ]"
+        echo -e "Starting Topbeat ................ [    WORKING ]"
+        # Start Topbeat
+        daemon --name="topbeat" --output=topbeat.out -F /var/run/topbeat.pid -D $REPO_ROOT -X /usr/bin/topbeat -- -c /etc/topbeat/topbeat.yml
+        echo -e "Starting Topbeat ................ [       DONE ]"
         
         echo -e "Starting Kibana ................. [    WORKING ]"
         # Start Kibana
@@ -130,8 +136,8 @@
             unzip beats-dashboards-*.zip
             cd beats-dashboards-*
             ./load.sh
-            curl -O https://gist.githubusercontent.com/thisismitch/3429023e8438cc25b86c/raw/d8c479e2a1adcea8b1fe86570e42abab0f10f364/filebeat-index-template.json
-            curl -XPUT 'http://localhost:9200/_template/filebeat?pretty' -d@filebeat-index-template.json
+            curl -O https://raw.githubusercontent.com/elastic/topbeat/master/etc/topbeat.template.json
+            curl -XPUT 'http://localhost:9200/_template/topbeat' -d@topbeat.template.json
             echo -e "Configuring Kibana dashboard .... [      DONE ]"
         else
             echo -e "Cheking all services are up ..... [    FAILED ]"
@@ -205,12 +211,12 @@
         mkdir -p /etc/pki/tls/certs/
         echo "$CERT" > /etc/pki/tls/certs/logstash-forwarder.crt
         
-        # Configure filebeat
-        envsubst < $REPO_ROOT/filebeat.yml > /etc/filebeat/filebeat.yml
-        echo -e "Starting Filebeat ............... [    WORKING ]"
-        # Start Filebeat
-        daemon --name="filebeat" --output=filebeat.out -F /var/run/filebeat.pid -D $REPO_ROOT -X /usr/bin/filebeat -- -c /etc/filebeat/filebeat.yml
-        echo -e "Starting Filebeat ............... [       DONE ]"
+        # Configure topbeat
+        envsubst < $REPO_ROOT/topbeat.yml > /etc/topbeat/topbeat.yml
+        echo -e "Starting Topbeat ................ [    WORKING ]"
+        # Start Topbeat
+        daemon --name="topbeat" --output=topbeat.out -F /var/run/topbeat.pid -D $REPO_ROOT -X /usr/bin/topbeat -- -c /etc/topbeat/topbeat.yml
+        echo -e "Starting Topbeat ................ [       DONE ]"
       '''
     }]
   }

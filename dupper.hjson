@@ -53,7 +53,7 @@
     }
   ],
   commands: {
-    setup-master: [{
+    start: [{
       server:
       '''
         local _mem=$(free -m | grep Mem | awk '{print $2}')
@@ -64,7 +64,9 @@
         fi
         
         export SERVER_IP=$SERVER_IP
-        echo "$SERVER_IP     elk" >> /etc/hosts
+        if [[ ! $(grep "$SERVER_IP.*elk" /etc/hosts) ]]; then 
+            echo "$SERVER_IP     elk" >> /etc/hosts
+        fi
 
         echo -e "Configuring ELK ................. [    WORKING ]"
 
@@ -75,16 +77,19 @@
         cp $REPO_ROOT/30-elasticsearch-output.conf /etc/logstash/conf.d/
 
         echo -e "Configuring ELK ................. [       DONE ]"
-        echo -e "Generating Certificates ......... [    WORKING ]"
+        
+        if [[ ! -f /etc/pki/tls/certs/logstash-forwarder.crt ]]; then
+            echo -e "Generating Certificates ......... [    WORKING ]"
+            # Generate Certificate
+            mkdir -p /etc/pki/tls/certs
+            mkdir -p /etc/pki/tls/private      
+            cd /etc/pki/tls
+            sudo openssl req -subj '/CN=elk/' -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
+            echo -e "Generating Certificates ......... [       DONE ]"
+        fi
 
-        # Generate Certificate
-        mkdir -p /etc/pki/tls/certs
-        mkdir -p /etc/pki/tls/private      
-        cd /etc/pki/tls
-        sudo openssl req -subj '/CN=elk/' -x509 -days 3650 -batch -nodes -newkey rsa:2048 -keyout private/logstash-forwarder.key -out certs/logstash-forwarder.crt
         CERT="$(cat /etc/pki/tls/certs/logstash-forwarder.crt)"
         _export CERT
-        echo -e "Generating Certificates ......... [       DONE ]"
         
         echo -e "Starting Elastic Search ......... [    WORKING ]"
         # Start services
@@ -126,14 +131,14 @@
             # Configure Kibana
             cd $HOME
             curl -L -O https://download.elastic.co/beats/dashboards/beats-dashboards-1.1.0.zip
-            unzip beats-dashboards-*.zip
+            unzip -n beats-dashboards-*.zip
             cd beats-dashboards-*
             ./load.sh
             curl -O https://raw.githubusercontent.com/elastic/topbeat/master/etc/topbeat.template.json
             curl -XPUT 'http://localhost:9200/_template/topbeat' -d@topbeat.template.json
-            echo -e "Configuring Kibana dashboard .... [      DONE ]"
+            echo -e "\nConfiguring Kibana dashboard .... [      DONE ]"
         else
-            echo -e "Cheking all services are up ..... [    FAILED ]"
+            echo -e "\nCheking all services are up ..... [    FAILED ]"
         fi
 
       '''
@@ -145,13 +150,98 @@
         # Open browser on Mac if server started successfully.
         if [[ $_exit_code -eq 0 ]]
         then
+         echo "Kibana Dashboard Credentials:"
+         echo "Username: admin"
+         echo "Password: kibana"
          os="$(uname -s)"
          if [[ $os == "Darwin" ]]; then
-             echo -e "Opening Browser"
-             open http://$SERVER_IP:
-         fi        
+             echo -e "Opening Default Browser"
+             open http://$SERVER_IP
+         elif [[ $os == "Linux" ]]; then
+             echo -e "Opening Default Browser"         
+             sensible-browser http://$SERVER_IP
+             _exit_code=$?
+             [[ $_exit_code -ne 0 ]] || echo "Failed to open browser, visit Kibana home page http://$SERVER_IP"
+          fi        
         fi
     
+      '''
+    }],
+    stop: [{
+      server:
+      '''
+        
+        echo -e "Stopping Elastic Search ......... [    WORKING ]"
+        # Stop Elasticsearch        
+        service elasticsearch stop
+        echo -e "Stopping Elastic Search ......... [       DONE ]"
+
+        echo -e "Stopping Nginx .................. [    WORKING ]"
+        service nginx stop
+        echo -e "Stopping Nginx .................. [       DONE ]"
+        
+        echo -e "Stopping Logstash ............... [    WORKING ]"
+        # Get group ID of Logstash daemon process
+        pgid=$(ps --no-headers -o pgid $(cat /var/run/logstash.pid))
+        pgid=$(echo $pgid | tr -d '[[:space:]]')
+
+        # Kill all group processes
+        pkill -9 -g $pgid
+
+
+        # Check for termination and report status
+        timeout 5 bash -c -- "while true; do [ -f /var/run/logstash.pid ]; \
+        if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
+        _exit_code=$?
+
+        if [[ $_exit_code -eq 0 ]]
+        then
+        echo -e "Stopping Logstash ............... [       DONE ]"
+        else
+        echo -e "Stopping Logstash ............... [     FAILED ]"
+        fi
+        
+        echo -e "Stopping Topbeat ................ [    WORKING ]"
+        # Get group ID of Logstash daemon process
+        pgid=$(ps --no-headers -o pgid $(cat /var/run/topbeat.pid))
+        pgid=$(echo $pgid | tr -d '[[:space:]]')
+
+        # Kill all group processes
+        pkill -9 -g $pgid
+
+
+        # Check for termination and report status
+        timeout 5 bash -c -- "while true; do [ -f /var/run/topbeat.pid ]; \
+        if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
+        _exit_code=$?
+
+        if [[ $_exit_code -eq 0 ]]
+        then
+        echo -e "Stopping Topbeat ................ [       DONE ]"
+        else
+        echo -e "Stopping Topbeat ................ [     FAILED ]"
+        fi
+        
+        echo -e "Stopping Kibana ................. [    WORKING ]"
+        # Get group ID of Logstash daemon process
+        pgid=$(ps --no-headers -o pgid $(cat /var/run/kibana.pid))
+        pgid=$(echo $pgid | tr -d '[[:space:]]')
+
+        # Kill all group processes
+        pkill -1 -g $pgid
+
+
+        # Check for termination and report status
+        timeout 5 bash -c -- "while true; do [ -f /var/run/kibana.pid ]; \
+        if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
+        _exit_code=$?
+
+        if [[ $_exit_code -eq 0 ]]
+        then
+        echo -e "Stopping Kibana ................. [       DONE ]"
+        else
+        echo -e "Stopping Kibana ................. [     FAILED ]"
+        fi
       '''
     }],
     get-cert: [{
@@ -200,7 +290,9 @@
     },{    
       server:
       '''
-        echo "$_master     elk" >> /etc/hosts
+        if [[ ! $(grep "$_master.*elk" /etc/hosts) ]]; then 
+            echo "$_master     elk" >> /etc/hosts
+        fi
         mkdir -p /etc/pki/tls/certs/
         echo "$CERT" > /etc/pki/tls/certs/logstash-forwarder.crt
         
@@ -209,9 +301,34 @@
         echo -e "Starting Topbeat ................ [    WORKING ]"
         # Start Topbeat
         daemon --name="topbeat" --output=topbeat.out -F /var/run/topbeat.pid -D $REPO_ROOT -X /usr/bin/topbeat -- -c /etc/topbeat/topbeat.yml
-        cat topbeat.out
+        cat $REPO_ROOT/topbeat.out
         echo -e "Starting Topbeat ................ [       DONE ]"
       '''
-    }]
+    }],
+    unjoin: [{
+      server:
+      '''
+        echo -e "Stopping Topbeat ................ [    WORKING ]"
+        # Get group ID of Logstash daemon process
+        pgid=$(ps --no-headers -o pgid $(cat /var/run/topbeat.pid))
+        pgid=$(echo $pgid | tr -d '[[:space:]]')
+
+        # Kill all group processes
+        pkill -9 -g $pgid
+
+
+        # Check for termination and report status
+        timeout 5 bash -c -- "while true; do [ -f /var/run/topbeat.pid ]; \
+        if [ $? -eq 0 ]; then break; fi; sleep 2s; done"
+        _exit_code=$?
+
+        if [[ $_exit_code -eq 0 ]]
+        then
+        echo -e "Stopping Topbeat ................ [       DONE ]"
+        else
+        echo -e "Stopping Topbeat ................ [     FAILED ]"
+        fi
+      '''
+    }]    
   }
 }

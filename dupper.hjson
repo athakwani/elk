@@ -117,7 +117,7 @@
         
         echo -e "Cheking all services are up ..... [    WORKING ]"
         # Check for Server start
-        timeout 20 bash -c -- "while true; do wget -q --retry-connrefused \
+        timeout 30 bash -c -- "while true; do wget -q --retry-connrefused \
         --waitretry=1 --read-timeout=20 --timeout=15 -t 0 --continue localhost:9200 >/dev/null 2>&1; \
         if [ $? = 0 ]; then break; fi; sleep 2s; done"
 
@@ -145,7 +145,7 @@
     },{
       client:
       '''
-          _detached=1
+          _detached=0
           
           while [ "$#" -gt 0 ]
           do

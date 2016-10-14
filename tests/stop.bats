@@ -9,6 +9,7 @@ setup()
 }
 
 @test "stop" {
+skip
   dupper exec -t elk stop
 
   process="$(dupper exec -t elk ps -eo args)"

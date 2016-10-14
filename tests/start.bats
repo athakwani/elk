@@ -9,6 +9,7 @@ setup()
 }
 
 @test "start" {
+skip
   process="$(dupper exec -t elk ps -eo args)"
   echo "$process"
   dupper exec -t elk service elasticsearch status

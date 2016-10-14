@@ -5,11 +5,10 @@
 
 setup()
 {
-  dupper exec -t elk start
+  dupper exec -t elk start --detached
 }
 
 @test "stop" {
-skip
   dupper exec -t elk stop
 
   process="$(dupper exec -t elk ps -eo args)"

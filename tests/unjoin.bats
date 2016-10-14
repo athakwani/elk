@@ -5,7 +5,7 @@
 
 setup()
 {
-  dupper exec -t elk start
+  dupper exec -t elk start --detached
 }
 
 @test "unjoin" {

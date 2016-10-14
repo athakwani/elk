@@ -145,6 +145,19 @@
     },{
       client:
       '''
+          _detached=1
+          
+          while [ "$#" -gt 0 ]
+          do
+            opt="$1"
+            shift
+            case "$opt" in
+              --detached)
+                _detached=1
+                ;;
+            esac
+          done          
+      
         mkdir -p $HOME/.elk
         echo "$CERT" > $HOME/.elk/logstash-forwarder.crt
         # Open browser on Mac if server started successfully.
@@ -153,16 +166,20 @@
          echo "Kibana Dashboard Credentials:"
          echo "Username: admin"
          echo "Password: kibana"
-         os="$(uname -s)"
-         if [[ $os == "Darwin" ]]; then
-             echo -e "Opening Default Browser"
-             open http://$SERVER_IP
-         elif [[ $os == "Linux" ]]; then
-             echo -e "Opening Default Browser"         
-             sensible-browser http://$SERVER_IP
-             _exit_code=$?
-             [[ $_exit_code -ne 0 ]] || echo "Failed to open browser, visit Kibana home page http://$SERVER_IP"
-          fi        
+         if [[ $_detached -eq 0 ]]; then
+             os="$(uname -s)"
+             if [[ $os == "Darwin" ]]; then
+                 echo -e "Opening Default Browser"
+                 open http://$SERVER_IP
+             elif [[ $os == "Linux" ]]; then
+                 echo -e "Opening Default Browser"         
+                 sensible-browser http://$SERVER_IP
+                 _exit_code=$?
+                 [[ $_exit_code -ne 0 ]] || echo "Failed to open browser, visit Kibana homepage http://$SERVER_IP"
+              fi        
+          else
+              echo "Open Kibana homepage http://$SERVER_IP"
+          fi
         fi
     
       '''

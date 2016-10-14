@@ -5,11 +5,10 @@
 
 setup()
 {
-  dupper exec -t elk start
+  dupper exec -t elk start --detached
 }
 
 @test "start" {
-skip
   process="$(dupper exec -t elk ps -eo args)"
   echo "$process"
   dupper exec -t elk service elasticsearch status

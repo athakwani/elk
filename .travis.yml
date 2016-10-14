@@ -15,11 +15,13 @@ before_install:
 - sudo ./install.sh /usr/local
 
 install:
-- dupper --debug dup -t --branch $TRAVIS_BRANCH https://github.com/athakwani/elk
+- dupper --debug dup -t --branch $TRAVIS_BRANCH --commit $TRAVIS_COMMIT https://github.com/athakwani/elk
+- docker tag elk:$TRAVIS_COMMIT dupper/elk:$TRAVIS_COMMIT
+- docker push dupper/elk:$TRAVIS_COMMIT
 
 script:
 - cd $TRAVIS_BUILD_DIR && bats tests
 
 after_success:
-- docker tag elk:$TRAVIS_COMMIT dupper/elk:$TRAVIS_COMMIT
-- docker push dupper/elk:$TRAVIS_COMMIT
+- docker tag elk:$TRAVIS_COMMIT dupper/elk:$TRAVIS_BRANCH
+- docker push dupper/elk:$TRAVIS_BRANCH

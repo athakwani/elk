@@ -11,6 +11,7 @@ setup()
 }
 
 @test "join" {
+  skip
   process="$(dupper exec -t elk ps -eo args)"
   echo "$process"
   echo "$process" | egrep topbeat   

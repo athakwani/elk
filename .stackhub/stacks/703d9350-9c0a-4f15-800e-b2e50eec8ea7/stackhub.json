@@ -35,28 +35,7 @@
           "connectedAt": "2026-11-11T22:59:05.697Z",
           "autoSync": true
         },
-        "children": [
-          {
-            "image": "elasticsearch",
-            "command": "",
-            "args": [],
-            "environment": {},
-            "ports": [],
-            "volumes": [],
-            "secrets": [],
-            "id": "block-86230e79-a3f8-4478-a30a-2368aadfcf52",
-            "name": "elasticsearch",
-            "shortName": "elasticsearch",
-            "type": "service",
-            "parentId": "block-1794437945698",
-            "children": [],
-            "networks": [],
-            "constraints": [],
-            "labels": {},
-            "createdAt": "2026-11-11T22:59:24.094Z",
-            "updatedAt": "2026-11-11T22:59:24.094Z"
-          }
-        ],
+        "children": [],
         "networks": [],
         "constraints": [],
         "labels": {},
@@ -75,6 +54,6 @@
     },
     "tags": [],
     "category": "web",
-    "version": "1.0.0"
+    "version": "1.0.1"
   }
 }
